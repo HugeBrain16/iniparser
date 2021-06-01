@@ -4,6 +4,7 @@ import io
 import re
 
 from typing import Union
+from typing import Optional
 
 __version__ = "0.1.0"
 
@@ -25,7 +26,7 @@ _OPT_PTR = re.compile(rf"^\s*(?P<key>.*)\s*[{r'|'.join(DELIMITERS)}]\s*(?P<value
 class ParsingError(Exception):
     """parsing error base exception"""
 
-    def __init__(self, msg, line, text=""):
+    def __init__(self, msg: str, line: int, text: Optional[str] = ""):
         self.msg = msg
         self.line = line
         self.text = text
