@@ -18,7 +18,8 @@ BOOL_STATES = {
     "yes": True,
 }
 COMMENT_PREFIX = ";#"
-_OPT_PTR = re.compile(rf"^\s*(?P<key>.*)\s*\=\s*(?P<value>.*)\s*$")
+DELIMITERS = ("=", ":")
+_OPT_PTR = re.compile(rf"^\s*(?P<key>.*)\s*[{r'|'.join(DELIMITERS)}]\s*(?P<value>.*)\s*$")
 
 
 class ParsingError(Exception):
