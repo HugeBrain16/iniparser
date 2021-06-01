@@ -1,7 +1,7 @@
 import setuptools
 from iniparser import __version__ as version
 
-f = open('README.md')
+f = open('README.md', encoding='UTF-8')
 long_description = f.read()
 f.close()
 
