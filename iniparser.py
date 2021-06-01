@@ -20,7 +20,9 @@ BOOL_STATES = {
 }
 COMMENT_PREFIX = ";#"
 DELIMITERS = ("=", ":")
-_OPT_PTR = re.compile(rf"^\s*(?P<key>.*)\s*[{r'|'.join(DELIMITERS)}]\s*(?P<value>.*)\s*$")
+_OPT_PTR = re.compile(
+    rf"^\s*(?P<key>.*)\s*[{r'|'.join(DELIMITERS)}]\s*(?P<value>.*)\s*$"
+)
 
 
 class ParsingError(Exception):
@@ -30,19 +32,20 @@ class ParsingError(Exception):
         self.msg = msg
         self.line = line
         self.text = text
+        super().__init__(self.msg)
 
     def __str__(self):
         return f"{self.msg}, {self.text} [line: {self.line}]"
 
 
-def get(string: Union[str, io.StringIO], key: str) -> str:
+def get(string: Union[str, io.StringIO], key: str) -> Union[str, None]:
     """get option's value from string"""
-    if type(string) is str:
+    if isinstance(string, str):
         string = io.StringIO(string).readlines()
-    elif type(string) is io.StringIO:
+    elif isinstance(string, io.StringIO):
         string = string.readlines()
     else:
-        TypeError("string must be either `StringIO` type or just `str`")
+        raise TypeError("string must be either `StringIO` type or just `str`")
 
     for lineno, line in enumerate(string):
         lineno += 1
@@ -69,12 +72,12 @@ def getall(string: Union[io.StringIO, str]) -> dict:
     """get all option's value"""
     result = {}
 
-    if type(string) is str:
+    if isinstance(string, str):
         string = io.StringIO(string).readlines()
-    elif type(string) is io.StringIO:
+    elif isinstance(string, io.StringIO):
         string = string.readlines()
     else:
-        TypeError("string must be either `StringIO` type or just `str`")
+        raise TypeError("string must be either `StringIO` type or just `str`")
 
     for lineno, line in enumerate(string):
         lineno += 1
@@ -102,25 +105,25 @@ def getall(string: Union[io.StringIO, str]) -> dict:
     return result
 
 
-def getint(string: Union[io.StringIO, str], key: str) -> int:
+def getint(string: Union[io.StringIO, str], key: str) -> Union[int, None]:
     """get option's value in `int` type"""
     val = get(string, key)
     if val:
         return int(val)
 
 
-def getfloat(string: Union[io.StringIO, str], key: str) -> float:
+def getfloat(string: Union[io.StringIO, str], key: str) -> Union[float, None]:
     """get option's value in `float` type"""
     val = get(string, key)
     if val:
         return float(val)
 
 
-def getbool(string: Union[io.StringIO, str], key: str) -> bool:
+def getbool(string: Union[io.StringIO, str], key: str) -> Union[bool, None]:
     """get option's value in `bool` type"""
     val = get(string, key)
     if val:
         if val.lower() in BOOL_STATES:
             return BOOL_STATES[val]
-        else:
-            raise ValueError(f"unknown boolean states, {val}")
+
+        raise ValueError(f"unknown boolean states, {val}")
