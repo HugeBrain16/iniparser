@@ -31,3 +31,16 @@ def test_conv():
 	assert type(rat) is int
 	assert type(size) is float
 	assert type(cockroach) is bool
+
+def test_write():
+	text = """
+	joe = mama
+	"""
+
+	text = iniparser.set(text, "not", "funni")
+	data = iniparser.getall(text)
+
+	assert "not" in data
+	assert data["not"] == "funni"
+	assert "joe" in data
+	assert data["joe"] == "mama"
