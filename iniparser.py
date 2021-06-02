@@ -1,12 +1,13 @@
-"""a minimalist (?) and simple ini parser. read-only. sections unsupported."""
+"""a minimalist (?) and simple ini parser. sections unsupported."""
 
 import io
 import re
 
 from typing import Union
 from typing import Optional
+from typing import Any
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 
 BOOL_STATES = {
     "false": False,
@@ -127,3 +128,11 @@ def getbool(string: Union[io.StringIO, str], key: str) -> Union[bool, None]:
             return BOOL_STATES[val]
 
         raise ValueError(f"unknown boolean states, {val}")
+
+
+def set(string: Union[io.StringIO, str], key: str, value: Any) -> str:
+    """set new option to string, return string with new option"""
+    opts = getall(string)
+    opts.update({key: value})
+
+    return "\n".join([key + " = " + opts[key] for key in opts])
