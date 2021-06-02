@@ -7,7 +7,7 @@ this project was deleted for some reason, and I decided to restore the project a
 |Name|Support|
 |:---|:-----:|
 |Read|✅|
-|Write|❌|
+|Write|✅|
 |Comments|✅|
 |Sections|❌|
 |Multi-Line|❌|
