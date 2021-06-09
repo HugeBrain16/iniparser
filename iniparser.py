@@ -167,7 +167,7 @@ def set(string: Union[io.StringIO, str], key: str, value: Any) -> str:
     opts = getall(string)
     opts.update({key: value})
 
-    return "\n".join([key + " = " + opts[key] for key in opts])
+    return "\n".join([key + " = " + str(opts[key]) for key in opts])
 
 
 def fset(file: Union[io.TextIOWrapper, str], key: str, value: Any) -> None:
