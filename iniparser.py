@@ -21,9 +21,7 @@ BOOL_STATES = {
 }
 COMMENT_PREFIX = ";#"
 DELIMITERS = ("=", ":")
-_OPT_PTR = re.compile(
-    rf"^\s*(?P<key>.*)\s*[{''.join(DELIMITERS)}]\s*(?P<value>.*)\s*$"
-)
+_OPT_PTR = re.compile(rf"^\s*(?P<key>.*)\s*[{''.join(DELIMITERS)}]\s*(?P<value>.*)\s*$")
 
 
 class ParsingError(Exception):
@@ -130,9 +128,53 @@ def getbool(string: Union[io.StringIO, str], key: str) -> Union[bool, None]:
         raise ValueError(f"unknown boolean states, {val}")
 
 
+def fget(file: Union[io.TextIOWrapper, str], key: str) -> Union[str, None]:
+    """get option's value from file"""
+    if isinstance(file, io.TextIOWrapper):
+        value = get(file.read(), key)
+    elif isinstance(file, str):
+        value = get(open(file, "r", encoding="UTF-8").read(), key)
+
+    return value
+
+
+def fgetint(file: Union[io.TextIOWrapper, str], key: str) -> Union[int, None]:
+    """get option's value in `int` type from file"""
+    val = fget(file, key)
+    if val:
+        return int(val)
+
+
+def fgetint(file: Union[io.TextIOWrapper, str], key: str) -> Union[float, None]:
+    """get option's value in `float` type from file"""
+    val = fget(file, key)
+    if val:
+        return float(val)
+
+
+def fgetbool(file: Union[io.TextIOWrapper, str], key: str) -> Union[bool, None]:
+    """get option's value in `bool` type from file"""
+    val = fget(file, key)
+    if val:
+        if val.lower() in BOOL_STATES:
+            return BOOL_STATES[val]
+
+        raise ValueError(f"unknown boolean states, {val}")
+
+
 def set(string: Union[io.StringIO, str], key: str, value: Any) -> str:
     """set new option to string, return string with new option"""
     opts = getall(string)
     opts.update({key: value})
 
     return "\n".join([key + " = " + opts[key] for key in opts])
+
+
+def fset(file: Union[io.TextIOWrapper, str], key: str, value: Any) -> None:
+    """set new option to file"""
+    if isinstance(file, io.TextIOWrapper):
+        data = set(file.read(), key, value)
+    elif isinstance(file, str):
+        data = set(open(file, "r", encoding="UTF-8").read(), key, value)
+
+    open(file, "w", encoding="UTF-8").write(data)
