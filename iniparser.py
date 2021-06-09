@@ -22,7 +22,7 @@ BOOL_STATES = {
 COMMENT_PREFIX = ";#"
 DELIMITERS = ("=", ":")
 _OPT_PTR = re.compile(
-    rf"^\s*(?P<key>.*)\s*[{r'|'.join(DELIMITERS)}]\s*(?P<value>.*)\s*$"
+    rf"^\s*(?P<key>.*)\s*[{''.join(DELIMITERS)}]\s*(?P<value>.*)\s*$"
 )
 
 
