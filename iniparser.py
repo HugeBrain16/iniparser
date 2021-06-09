@@ -174,7 +174,7 @@ def fset(file: Union[io.TextIOWrapper, str], key: str, value: Any) -> None:
     """set new option to file"""
     if isinstance(file, io.TextIOWrapper):
         data = set(file.read(), key, value)
+        open(file.name, "w", encoding="UTF-8").write(data)
     elif isinstance(file, str):
         data = set(open(file, "r", encoding="UTF-8").read(), key, value)
-
-    open(file, "w", encoding="UTF-8").write(data)
+        open(file, "w", encoding="UTF-8").write(data)
