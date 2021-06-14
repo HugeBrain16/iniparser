@@ -7,9 +7,10 @@ this project was deleted for some reason, and I decided to restore the project a
 |Name|Support|
 |:---|:-----:|
 |Read|✅|
-|Write|✅|
+|Write|❌|
 |Comments|✅|
-|Sections|❌|
+|Inline Comments|✅|
+|Sections|✅|
 |Multi-Line|❌|
 
 ## Examples
@@ -30,7 +31,7 @@ age = iniparser.get(text, "age")
 print("name: " + name)
 print("age: " + age)
 ```
-  
+
 read and convert value with specific types
 ```py
 import iniparser
