@@ -32,15 +32,12 @@ def test_conv():
 	assert type(size) is float
 	assert type(cockroach) is bool
 
-def test_write():
+def test_section():
 	text = """
-	joe = mama
+	[main]
+	name = sven
+	age = 22
 	"""
 
-	text = iniparser.set(text, "not", "funni")
-	data = iniparser.getall(text)
-
-	assert "not" in data
-	assert data["not"] == "funni"
-	assert "joe" in data
-	assert data["joe"] == "mama"
+	assert iniparser.get(text, "name", "main") == "sven"
+	assert iniparser.getint(text, "age", "main") == 22
