@@ -1,13 +1,12 @@
-"""a minimalist (?) and simple ini parser. sections unsupported."""
+"""a minimalist (?) and simple ini parser."""
 
 import io
-import re
 
 from typing import Union
 from typing import Optional
 from typing import Any
 
-__version__ = "0.3.0"
+__version__ = "1.0.0"
 
 BOOL_STATES = {
     "false": False,
@@ -21,7 +20,6 @@ BOOL_STATES = {
 }
 COMMENT_PREFIX = ";#"
 DELIMITERS = ("=", ":")
-_OPT_PTR = re.compile(rf"^\s*(?P<key>.*)\s*[{''.join(DELIMITERS)}]\s*(?P<value>.*)\s*$")
 
 
 class ParsingError(Exception):
@@ -37,38 +35,98 @@ class ParsingError(Exception):
         return f"{self.msg}, {self.text} [line: {self.line}]"
 
 
-def get(string: Union[str, io.StringIO], key: str) -> Union[str, None]:
+def _parse_inline_comment(text: str) -> Union[str, None]:
+    """parse inline comment"""
+    result = text
+
+    cmt = text.split(" ", 1)
+    if len(cmt) == 2:
+        rest = cmt[1].strip()
+
+        if rest[0] in COMMENT_PREFIX:
+            result = cmt[0]
+
+    return result
+
+
+def _parse_section(text: str) -> Union[str, None]:
+    """parse section"""
+    header = None
+
+    if text[0] != "[":
+        return header
+
+    tokens = text.split("[", 1)
+    tokens = tokens[1].split("]", 1)
+    if len(tokens) == 2:
+        header = tokens[0]
+
+        if tokens[1] and tokens[1].strip()[0] not in COMMENT_PREFIX:
+            header = None
+
+    if header:
+        cmt_header = header.split(" ", 1)
+        if len(cmt_header) == 2:
+            rest = cmt_header[1].strip()
+
+            if rest[0] in COMMENT_PREFIX:
+                header = None
+
+    return header
+
+
+def _parse_option(text: str) -> Union[tuple, None]:
+    """parse option"""
+    key = None
+    val = None
+
+    if not text:
+        return None
+
+    for delim in DELIMITERS:
+        tokens = text.split(delim, 1)
+
+        if len(tokens) == 2:
+            key = tokens[0].strip()
+            val = tokens[1].strip()
+            break
+
+        elif len(tokens) < 2:
+            key = tokens[0].strip()
+
+    cmt_key = key.split(" ", 1)
+    if len(cmt_key) == 2:
+        rest = cmt_key[1].strip()
+
+        if rest[0] in COMMENT_PREFIX:
+            key = cmt_key[0]
+            val = None
+
+    if val:
+        cmt_val = val.split(" ", 1)
+        if len(cmt_val) == 2:
+            rest = cmt_val[1].strip()
+
+            if rest[0] in COMMENT_PREFIX:
+                val = cmt_val[0]
+
+    return (key, val)
+
+
+def get(
+    string: Union[str, io.StringIO], key: str, section: Optional[str] = None
+) -> Union[str, None]:
     """get option's value from string"""
-    if isinstance(string, str):
-        string = io.StringIO(string).readlines()
-    elif isinstance(string, io.StringIO):
-        string = string.readlines()
-    else:
-        raise TypeError("string must be either `StringIO` type or just `str`")
+    data = getall(string)
 
-    for lineno, line in enumerate(string):
-        lineno += 1
+    if section:
+        return data[section][key]
 
-        if line.strip().startswith(tuple(COMMENT_PREFIX)) or not line.strip():
-            continue
-
-        opt = _OPT_PTR.match(line.strip())
-
-        if opt:
-            key_, val = opt.group("key", "value")
-
-            if not key_.strip():
-                raise ParsingError("key does not have a name", lineno, line.strip())
-
-            if key == key_.strip():
-                return val.strip()
-
-        else:
-            raise ParsingError("line contains parsing error", lineno, line.strip())
+    return data[key]
 
 
-def getall(string: Union[io.StringIO, str]) -> dict:
-    """get all option's value"""
+def getall(string: Union[str, io.StringIO]) -> tuple:
+    """get all sections and options from string"""
     result = {}
 
     if isinstance(string, str):
@@ -76,51 +134,72 @@ def getall(string: Union[io.StringIO, str]) -> dict:
     elif isinstance(string, io.StringIO):
         string = string.readlines()
     else:
-        raise TypeError("string must be either `StringIO` type or just `str`")
+        raise TypeError("`string` must be either StringIO object or just str")
+
+    prev_section = None
+    prev_option = None
 
     for lineno, line in enumerate(string):
         lineno += 1
+        line = line.strip()
 
-        if line.strip().startswith(tuple(COMMENT_PREFIX)) or not line.strip():
+        if not line:
             continue
 
-        opt = _OPT_PTR.match(line.strip())
+        if line[0] in COMMENT_PREFIX:
+            continue
 
-        if opt:
-            key, val = opt.group("key", "value")
+        section = _parse_section(line)
 
-            if not key.strip():
-                raise ParsingError("key does not have a name", lineno, line.strip())
-
-            if key.strip() not in result:
-                result.update({key.strip(): val.strip()})
-            else:
-                raise ParsingError(
-                    f"option with key `{key}` already exists", lineno, line.strip()
-                )
+        if section:
+            prev_section = section
+            result.update({section: {}})
         else:
-            raise ParsingError("line contains parsing error", lineno, line.strip())
+            option = _parse_option(line)
+
+            prev_option = option
+
+            if prev_section:
+                if option[0] not in result[prev_section]:
+                    result[prev_section].update({option[0]: option[1]})
+                else:
+                    raise ParsingError(
+                        f"option `{option[0]}` already exists", lineno, line
+                    )
+            else:
+                if option[0] not in result:
+                    result.update({option[0]: option[1]})
+                else:
+                    raise ParsingError(
+                        f"option `{option[0]}` already exists", lineno, line
+                    )
 
     return result
 
 
-def getint(string: Union[io.StringIO, str], key: str) -> Union[int, None]:
+def getint(
+    string: Union[io.StringIO, str], key: str, section: Optional[str] = None
+) -> Union[int, None]:
     """get option's value in `int` type"""
-    val = get(string, key)
+    val = get(string, key, section)
     if val:
         return int(val)
 
 
-def getfloat(string: Union[io.StringIO, str], key: str) -> Union[float, None]:
+def getfloat(
+    string: Union[io.StringIO, str], key: str, section: Optional[str] = None
+) -> Union[float, None]:
     """get option's value in `float` type"""
-    val = get(string, key)
+    val = get(string, key, section)
     if val:
         return float(val)
 
 
-def getbool(string: Union[io.StringIO, str], key: str) -> Union[bool, None]:
+def getbool(
+    string: Union[io.StringIO, str], key: str, section: Optional[str] = None
+) -> Union[bool, None]:
     """get option's value in `bool` type"""
-    val = get(string, key)
+    val = get(string, key, section)
     if val:
         if val.lower() in BOOL_STATES:
             return BOOL_STATES[val]
@@ -128,53 +207,43 @@ def getbool(string: Union[io.StringIO, str], key: str) -> Union[bool, None]:
         raise ValueError(f"unknown boolean states, {val}")
 
 
-def fget(file: Union[io.TextIOWrapper, str], key: str) -> Union[str, None]:
+def fget(
+    file: Union[io.TextIOWrapper, str], key: str, section: Optional[str] = None
+) -> Union[str, None]:
     """get option's value from file"""
     if isinstance(file, io.TextIOWrapper):
-        value = get(file.read(), key)
+        value = get(file.read(), key, section)
     elif isinstance(file, str):
-        value = get(open(file, "r", encoding="UTF-8").read(), key)
+        value = get(open(file, "r", encoding="UTF-8").read(), key, section)
 
     return value
 
 
-def fgetint(file: Union[io.TextIOWrapper, str], key: str) -> Union[int, None]:
+def fgetint(
+    file: Union[io.TextIOWrapper, str], key: str, section: Optional[str] = None
+) -> Union[int, None]:
     """get option's value in `int` type from file"""
-    val = fget(file, key)
+    val = fget(file, key, section)
     if val:
         return int(val)
 
 
-def fgetint(file: Union[io.TextIOWrapper, str], key: str) -> Union[float, None]:
+def fgetint(
+    file: Union[io.TextIOWrapper, str], key: str, section: Optional[str] = None
+) -> Union[float, None]:
     """get option's value in `float` type from file"""
-    val = fget(file, key)
+    val = fget(file, key, section)
     if val:
         return float(val)
 
 
-def fgetbool(file: Union[io.TextIOWrapper, str], key: str) -> Union[bool, None]:
+def fgetbool(
+    file: Union[io.TextIOWrapper, str], key: str, section: Optional[str] = None
+) -> Union[bool, None]:
     """get option's value in `bool` type from file"""
-    val = fget(file, key)
+    val = fget(file, key, section)
     if val:
         if val.lower() in BOOL_STATES:
             return BOOL_STATES[val]
 
         raise ValueError(f"unknown boolean states, {val}")
-
-
-def set(string: Union[io.StringIO, str], key: str, value: Any) -> str:
-    """set new option to string, return string with new option"""
-    opts = getall(string)
-    opts.update({key: value})
-
-    return "\n".join([key + " = " + str(opts[key]) for key in opts])
-
-
-def fset(file: Union[io.TextIOWrapper, str], key: str, value: Any) -> None:
-    """set new option to file"""
-    if isinstance(file, io.TextIOWrapper):
-        data = set(file.read(), key, value)
-        open(file.name, "w", encoding="UTF-8").write(data)
-    elif isinstance(file, str):
-        data = set(open(file, "r", encoding="UTF-8").read(), key, value)
-        open(file, "w", encoding="UTF-8").write(data)
