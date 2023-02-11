@@ -2,10 +2,6 @@
 
 import io
 
-from typing import Union
-from typing import Optional
-from typing import Any
-
 __version__ = "1.0.0"
 
 BOOL_STATES = {
@@ -25,7 +21,7 @@ DELIMITERS = ("=", ":")
 class ParsingError(Exception):
     """parsing error base exception"""
 
-    def __init__(self, msg: str, line: int, text: Optional[str] = ""):
+    def __init__(self, msg: str, line: int, text: str | None = ""):
         self.msg = msg
         self.line = line
         self.text = text
@@ -35,7 +31,7 @@ class ParsingError(Exception):
         return f"{self.msg}, {self.text} [line: {self.line}]"
 
 
-def _parse_inline_comment(text: str) -> Union[str, None]:
+def _parse_inline_comment(text: str) -> str | None:
     """parse inline comment"""
     result = text
 
@@ -49,7 +45,7 @@ def _parse_inline_comment(text: str) -> Union[str, None]:
     return result
 
 
-def _parse_section(text: str) -> Union[str, None]:
+def _parse_section(text: str) -> str | None:
     """parse section"""
     header = None
 
@@ -75,7 +71,7 @@ def _parse_section(text: str) -> Union[str, None]:
     return header
 
 
-def _parse_option(text: str) -> Union[tuple, None]:
+def _parse_option(text: str) -> tuple | None:
     """parse option"""
     key = None
     val = None
@@ -113,9 +109,7 @@ def _parse_option(text: str) -> Union[tuple, None]:
     return (key, val)
 
 
-def get(
-    string: Union[str, io.StringIO], key: str, section: Optional[str] = None
-) -> Union[str, None]:
+def get(string: str | io.StringIO, key: str, section: str | None = None) -> str | None:
     """get option's value from string"""
     data = getall(string)
 
@@ -125,7 +119,7 @@ def get(
     return data[key]
 
 
-def getall(string: Union[str, io.StringIO]) -> tuple:
+def getall(string: str | io.StringIO) -> dict:
     """get all sections and options from string"""
     result = {}
 
@@ -137,7 +131,6 @@ def getall(string: Union[str, io.StringIO]) -> tuple:
         raise TypeError("`string` must be either StringIO object or just str")
 
     prev_section = None
-    prev_option = None
 
     for lineno, line in enumerate(string):
         lineno += 1
@@ -156,8 +149,6 @@ def getall(string: Union[str, io.StringIO]) -> tuple:
             result.update({section: {}})
         else:
             option = _parse_option(line)
-
-            prev_option = option
 
             if prev_section:
                 if option[0] not in result[prev_section]:
@@ -178,8 +169,8 @@ def getall(string: Union[str, io.StringIO]) -> tuple:
 
 
 def getint(
-    string: Union[io.StringIO, str], key: str, section: Optional[str] = None
-) -> Union[int, None]:
+    string: io.StringIO | str, key: str, section: str | None = None
+) -> int | None:
     """get option's value in `int` type"""
     val = get(string, key, section)
     if val:
@@ -187,8 +178,8 @@ def getint(
 
 
 def getfloat(
-    string: Union[io.StringIO, str], key: str, section: Optional[str] = None
-) -> Union[float, None]:
+    string: io.StringIO | str, key: str, section: str | None = None
+) -> float | None:
     """get option's value in `float` type"""
     val = get(string, key, section)
     if val:
@@ -196,8 +187,8 @@ def getfloat(
 
 
 def getbool(
-    string: Union[io.StringIO, str], key: str, section: Optional[str] = None
-) -> Union[bool, None]:
+    string: io.StringIO | str, key: str, section: str | None = None
+) -> bool | None:
     """get option's value in `bool` type"""
     val = get(string, key, section)
     if val:
@@ -208,8 +199,8 @@ def getbool(
 
 
 def fget(
-    file: Union[io.TextIOWrapper, str], key: str, section: Optional[str] = None
-) -> Union[str, None]:
+    file: io.TextIOWrapper | str, key: str, section: str | None = None
+) -> str | None:
     """get option's value from file"""
     if isinstance(file, io.TextIOWrapper):
         value = get(file.read(), key, section)
@@ -220,17 +211,17 @@ def fget(
 
 
 def fgetint(
-    file: Union[io.TextIOWrapper, str], key: str, section: Optional[str] = None
-) -> Union[int, None]:
+    file: io.TextIOWrapper | str, key: str, section: str | None = None
+) -> int | None:
     """get option's value in `int` type from file"""
     val = fget(file, key, section)
     if val:
         return int(val)
 
 
-def fgetint(
-    file: Union[io.TextIOWrapper, str], key: str, section: Optional[str] = None
-) -> Union[float, None]:
+def fgetfloat(
+    file: io.TextIOWrapper | str, key: str, section: str | None = None
+) -> float | None:
     """get option's value in `float` type from file"""
     val = fget(file, key, section)
     if val:
@@ -238,8 +229,8 @@ def fgetint(
 
 
 def fgetbool(
-    file: Union[io.TextIOWrapper, str], key: str, section: Optional[str] = None
-) -> Union[bool, None]:
+    file: io.TextIOWrapper | str, key: str, section: str | None = None
+) -> bool | None:
     """get option's value in `bool` type from file"""
     val = fget(file, key, section)
     if val:
