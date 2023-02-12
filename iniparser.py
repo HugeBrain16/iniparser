@@ -2,7 +2,7 @@
 
 import io
 
-__version__ = "1.1.0"
+__version__ = "1.1.1"
 
 BOOL_STATES = {
     "false": False,
@@ -31,16 +31,15 @@ class ParsingError(Exception):
         return f"{self.msg}, {self.text} [line: {self.line}]"
 
 
-def _parse_inline_comment(text: str) -> str | None:
+def _strip_comment(text: str) -> str | None:
     """parse inline comment"""
-    result = text
+    result = ""
 
-    cmt = text.split(" ", 1)
-    if len(cmt) == 2:
-        rest = cmt[1].strip()
-
-        if rest[0] in COMMENT_PREFIX:
-            result = cmt[0]
+    for char in text:
+        if char not in COMMENT_PREFIX:
+            result += char
+        else:
+            break
 
     return result
 
@@ -56,17 +55,6 @@ def _parse_section(text: str) -> str | None:
     tokens = tokens[1].split("]", 1)
     if len(tokens) == 2:
         header = tokens[0]
-
-        if tokens[1] and tokens[1].strip()[0] not in COMMENT_PREFIX:
-            header = None
-
-    if header:
-        cmt_header = header.split(" ", 1)
-        if len(cmt_header) == 2:
-            rest = cmt_header[1].strip()
-
-            if rest[0] in COMMENT_PREFIX:
-                header = None
 
     return header
 
@@ -89,22 +77,6 @@ def _parse_option(text: str) -> tuple | None:
 
         elif len(tokens) < 2:
             key = tokens[0].strip()
-
-    cmt_key = key.split(" ", 1)
-    if len(cmt_key) == 2:
-        rest = cmt_key[1].strip()
-
-        if rest[0] in COMMENT_PREFIX:
-            key = cmt_key[0]
-            val = None
-
-    if val:
-        cmt_val = val.split(" ", 1)
-        if len(cmt_val) == 2:
-            rest = cmt_val[1].strip()
-
-            if rest[0] in COMMENT_PREFIX:
-                val = cmt_val[0]
 
     return (key, val)
 
@@ -135,7 +107,7 @@ def getall(string: str | io.StringIO) -> dict:
 
     for lineno, line in enumerate(string):
         lineno += 1
-        sline = line.strip()
+        sline = _strip_comment(line.strip())
 
         if not sline:
             continue
@@ -149,7 +121,13 @@ def getall(string: str | io.StringIO) -> dict:
             prev_section = section
             result.update({section: {}})
         else:
+            if sline[0] == "[":
+                raise ParsingError("Error parsing section", lineno, line)
+
             option = _parse_option(sline)
+
+            if not option[0]:
+                raise ParsingError("Error parsing option without a name", lineno, line)
 
             if option[1] is None:
                 if line[0] in " \t\n" and prev_option[0] and prev_option[1] is not None:
@@ -170,14 +148,14 @@ def getall(string: str | io.StringIO) -> dict:
                     result[prev_section].update({option[0]: option[1]})
                 else:
                     raise ParsingError(
-                        f"option `{option[0]}` already exists", lineno, sline
+                        f"option `{option[0]}` already exists", lineno, line
                     )
             else:
                 if option[0] not in result:
                     result.update({option[0]: option[1]})
                 else:
                     raise ParsingError(
-                        f"option `{option[0]}` already exists", lineno, sline
+                        f"option `{option[0]}` already exists", lineno, line
                     )
 
             prev_option = option
