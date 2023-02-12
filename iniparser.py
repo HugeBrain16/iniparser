@@ -2,7 +2,7 @@
 
 import io
 
-__version__ = "1.1.1"
+__version__ = "1.1.2"
 
 BOOL_STATES = {
     "false": False,
@@ -121,7 +121,7 @@ def getall(string: str | io.StringIO) -> dict:
             prev_section = section
             result.update({section: {}})
         else:
-            if sline[0] == "[":
+            if sline[0] == "[" or sline[-1] == "]":
                 raise ParsingError("Error parsing section", lineno, line)
 
             option = _parse_option(sline)
