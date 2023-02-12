@@ -168,6 +168,14 @@ def getall(string: str | io.StringIO) -> dict:
     return result
 
 
+def fgetall(file: io.TextIOWrapper | str) -> dict:
+    if isinstance(file, str):
+        with open(file, "r") as f:
+            return getall(f.read())
+    elif isinstance(file, io.TextIOWrapper):
+        return getall(file.read())
+
+
 def getint(
     string: io.StringIO | str, key: str, section: str | None = None
 ) -> int | None:
