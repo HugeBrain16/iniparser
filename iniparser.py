@@ -2,7 +2,7 @@
 
 import io
 
-__version__ = "1.0.0"
+__version__ = "1.1.0"
 
 BOOL_STATES = {
     "false": False,
@@ -131,39 +131,56 @@ def getall(string: str | io.StringIO) -> dict:
         raise TypeError("`string` must be either StringIO object or just str")
 
     prev_section = None
+    prev_option = (None, None)
 
     for lineno, line in enumerate(string):
         lineno += 1
-        line = line.strip()
+        sline = line.strip()
 
-        if not line:
+        if not sline:
             continue
 
-        if line[0] in COMMENT_PREFIX:
+        if sline[0] in COMMENT_PREFIX:
             continue
 
-        section = _parse_section(line)
+        section = _parse_section(sline)
 
         if section:
             prev_section = section
             result.update({section: {}})
         else:
-            option = _parse_option(line)
+            option = _parse_option(sline)
+
+            if option[1] is None:
+                if line[0] in " \t\n" and prev_option[0] and prev_option[1] is not None:
+                    if prev_section:
+                        result[prev_section][prev_option[0]] += (
+                            sline
+                            if not result[prev_section][prev_option[0]]
+                            else f"\n{sline}"
+                        )
+                    else:
+                        result[prev_option[0]] += (
+                            sline if not result[prev_option[0]] else f"\n{sline}"
+                        )
+                    continue
 
             if prev_section:
                 if option[0] not in result[prev_section]:
                     result[prev_section].update({option[0]: option[1]})
                 else:
                     raise ParsingError(
-                        f"option `{option[0]}` already exists", lineno, line
+                        f"option `{option[0]}` already exists", lineno, sline
                     )
             else:
                 if option[0] not in result:
                     result.update({option[0]: option[1]})
                 else:
                     raise ParsingError(
-                        f"option `{option[0]}` already exists", lineno, line
+                        f"option `{option[0]}` already exists", lineno, sline
                     )
+
+            prev_option = option
 
     return result
 
