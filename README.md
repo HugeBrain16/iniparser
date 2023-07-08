@@ -8,7 +8,7 @@ this project was deleted for some reason, and I decided to restore the project a
 | Name            | Support |
 | :-------------- | :-----: |
 | Read            |   ✅    |
-| Write           |   ❌    |
+| Write           |   ✅    |
 | Comments        |   ✅    |
 | Inline Comments |   ✅    |
 | Sections        |   ✅    |
@@ -22,45 +22,15 @@ basic example
 import iniparser
 
 text = """
-name = chad broski
-age = 55
+[player]
+x = 10
+y = 5
+health = 100.0
 """
 
-# get values as string
-name = iniparser.get(text, "name")
-age = iniparser.get(text, "age")
+data = iniparser.read(text)
 
-print("name: " + name)
-print("age: " + age)
-```
-
-read and convert value with specific types
-
-```py
-import iniparser
-
-text = """
-rat = 3
-size = 8.0
-cockroach = false
-"""
-
-rat = iniparser.getint(text, "rat")
-size = iniparser.getfloat(text, "size")
-cockroach = iniparser.getbool(text, "cockroach")
-```
-
-get all options
-
-```py
-import iniparser
-
-text = """
-joe = amogus
-who = joe
-amogus = sus
-no_more = amogus
-"""
-
-data = iniparser.getall(text)
+print("[Player]")
+print(f"<X: {data['player']['x']}, Y: {data['player']['y']}>")
+print("Health: " + data["player"]["health"])
 ```

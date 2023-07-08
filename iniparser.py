@@ -2,18 +2,8 @@
 
 import io
 
-__version__ = "1.1.2"
+__version__ = "1.2.0"
 
-BOOL_STATES = {
-    "false": False,
-    "0": False,
-    "off": False,
-    "no": False,
-    "true": True,
-    "1": True,
-    "on": True,
-    "yes": True,
-}
 COMMENT_PREFIX = ";#"
 DELIMITERS = ("=", ":")
 
@@ -36,10 +26,10 @@ def _strip_comment(text: str) -> str | None:
     result = ""
 
     for char in text:
-        if char not in COMMENT_PREFIX:
-            result += char
-        else:
+        if char in COMMENT_PREFIX:
             break
+
+        result += char
 
     return result
 
@@ -75,33 +65,22 @@ def _parse_option(text: str) -> tuple | None:
             val = tokens[1].strip()
             break
 
-        elif len(tokens) < 2:
-            key = tokens[0].strip()
+        key = tokens[0].strip()
 
     return (key, val)
 
 
-def get(string: str | io.StringIO, key: str, section: str | None = None) -> str | None:
-    """get option's value from string"""
-    data = getall(string)
-
-    if section:
-        return data[section][key]
-
-    return data[key]
-
-
-def getall(string: str | io.StringIO) -> dict:
-    """get all sections and options from string"""
-    result = {}
-
-    if isinstance(string, str):
-        string = io.StringIO(string).readlines()
-    elif isinstance(string, io.StringIO):
-        string = string.readlines()
-    else:
+def read(string: str | io.StringIO) -> dict:
+    """read ini from string"""
+    if not isinstance(string, (str, io.StringIO)):
         raise TypeError("`string` must be either StringIO object or just str")
 
+    result = {}
+    string = (
+        string.readlines()
+        if isinstance(string, io.StringIO)
+        else io.StringIO(string).readlines()
+    )
     prev_section = None
     prev_option = (None, None)
 
@@ -109,10 +88,7 @@ def getall(string: str | io.StringIO) -> dict:
         lineno += 1
         sline = _strip_comment(line.strip())
 
-        if not sline:
-            continue
-
-        if sline[0] in COMMENT_PREFIX:
+        if not sline or sline[0] in COMMENT_PREFIX:
             continue
 
         section = _parse_section(sline)
@@ -129,115 +105,67 @@ def getall(string: str | io.StringIO) -> dict:
             if not option[0]:
                 raise ParsingError("Error parsing option without a name", lineno, line)
 
-            if option[1] is None:
-                if line[0] in " \t\n" and prev_option[0] and prev_option[1] is not None:
-                    if prev_section:
-                        result[prev_section][prev_option[0]] += (
-                            sline
-                            if not result[prev_section][prev_option[0]]
-                            else f"\n{sline}"
-                        )
-                    else:
-                        result[prev_option[0]] += (
-                            sline if not result[prev_option[0]] else f"\n{sline}"
-                        )
-                    continue
+            if (
+                option[1] is None
+                and line[0] in " \t\n"
+                and prev_option[0]
+                and prev_option[1] is not None
+            ):
+                target = result[prev_section] if prev_section else result
+                target[prev_option[0]] += (
+                    sline if not target[prev_option[0]] else f"\n{sline}"
+                )
+                continue
 
             if prev_section:
-                if option[0] not in result[prev_section]:
-                    result[prev_section].update({option[0]: option[1]})
-                else:
+                if option[0] in result[prev_section]:
                     raise ParsingError(
                         f"option `{option[0]}` already exists", lineno, line
                     )
+
+                result[prev_section].update({option[0]: option[1]})
             else:
-                if option[0] not in result:
-                    result.update({option[0]: option[1]})
-                else:
+                if option[0] in result:
                     raise ParsingError(
                         f"option `{option[0]}` already exists", lineno, line
                     )
+
+                result.update({option[0]: option[1]})
 
             prev_option = option
 
     return result
 
 
-def fgetall(file: io.TextIOWrapper | str) -> dict:
-    if isinstance(file, str):
-        with open(file, "r") as f:
-            return getall(f.read())
-    elif isinstance(file, io.TextIOWrapper):
-        return getall(file.read())
+def write(data: dict, file: str):
+    """write ini to file, this will remove comments"""
+    with open(file, "w", encoding="UTF-8") as fctx:
+        result = ""
 
+        for sec in data:
+            if isinstance(data[sec], dict):
+                result += f"[{sec}]\n" if not result else f"\n[{sec}]\n"
+                for secopt in data[sec]:
+                    value = str(data[sec][secopt]) if data[sec][secopt] else None
 
-def getint(
-    string: io.StringIO | str, key: str, section: str | None = None
-) -> int | None:
-    """get option's value in `int` type"""
-    val = get(string, key, section)
-    if val:
-        return int(val)
+                    if value:
+                        result += f"{secopt} = " + value.split("\n", 2)[0] + "\n"
+                    else:
+                        result += f"{secopt}\n"
 
+                    if value:
+                        for optl in value.split("\n")[1:]:
+                            result += f"\t{optl}\n"
+            else:
+                value = str(data[sec]) if data[sec] else None
 
-def getfloat(
-    string: io.StringIO | str, key: str, section: str | None = None
-) -> float | None:
-    """get option's value in `float` type"""
-    val = get(string, key, section)
-    if val:
-        return float(val)
+                if value:
+                    result += f"{sec} = " + value.split("\n", 2)[0] + "\n"
+                else:
+                    result += f"{sec}\n"
 
+                if value:
+                    for optl in value.split("\n")[1:]:
+                        result += f"\t{optl}\n"
 
-def getbool(
-    string: io.StringIO | str, key: str, section: str | None = None
-) -> bool | None:
-    """get option's value in `bool` type"""
-    val = get(string, key, section)
-    if val:
-        if val.lower() in BOOL_STATES:
-            return BOOL_STATES[val]
-
-        raise ValueError(f"unknown boolean states, {val}")
-
-
-def fget(
-    file: io.TextIOWrapper | str, key: str, section: str | None = None
-) -> str | None:
-    """get option's value from file"""
-    if isinstance(file, io.TextIOWrapper):
-        value = get(file.read(), key, section)
-    elif isinstance(file, str):
-        value = get(open(file, "r", encoding="UTF-8").read(), key, section)
-
-    return value
-
-
-def fgetint(
-    file: io.TextIOWrapper | str, key: str, section: str | None = None
-) -> int | None:
-    """get option's value in `int` type from file"""
-    val = fget(file, key, section)
-    if val:
-        return int(val)
-
-
-def fgetfloat(
-    file: io.TextIOWrapper | str, key: str, section: str | None = None
-) -> float | None:
-    """get option's value in `float` type from file"""
-    val = fget(file, key, section)
-    if val:
-        return float(val)
-
-
-def fgetbool(
-    file: io.TextIOWrapper | str, key: str, section: str | None = None
-) -> bool | None:
-    """get option's value in `bool` type from file"""
-    val = fget(file, key, section)
-    if val:
-        if val.lower() in BOOL_STATES:
-            return BOOL_STATES[val]
-
-        raise ValueError(f"unknown boolean states, {val}")
+        fctx.write(result)
