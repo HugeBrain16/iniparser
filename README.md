@@ -14,9 +14,9 @@ this project was deleted for some reason, and I decided to restore the project a
 | Sections        |   ✅    |
 | Multi-Line      |   ✅    |
 
-## Examples
+**Note:** _writing to file will remove all comments._
 
-basic example
+## Example
 
 ```py
 import iniparser
